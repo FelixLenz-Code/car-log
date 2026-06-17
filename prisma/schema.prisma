@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+  LPG
+}
+
+enum RepairCategory {
+  REPAIR
+  SERVICE
+  INSPECTION
+  TIRES
+  OTHER
+}
+
+enum CleaningType {
+  INTERIOR
+  EXTERIOR
+  FULL
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         Role      @default(USER)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions Session[]
+  vehicles Vehicle[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Vehicle {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  make           String?
+  model          String?
+  year           Int?
+  licensePlate   String?
+  vin            String?
+  fuelType       FuelType @default(PETROL)
+  color          String?
+  photoUrl       String?
+  initialOdometer Int     @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fuelEntries    FuelEntry[]
+  odometerEntries OdometerEntry[]
+  repairEntries  RepairEntry[]
+  cleaningEntries CleaningEntry[]
+
+  @@index([userId])
+}
+
+model FuelEntry {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  date        DateTime
+  odometer    Int
+  amount      Float    // liters or kWh
+  pricePerUnit Float
+  totalCost   Float
+  isFullTank  Boolean  @default(true)
+  station     String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+model OdometerEntry {
+  id        String   @id @default(cuid())
+  vehicleId String
+  date      DateTime
+  odometer  Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+model RepairEntry {
+  id          String         @id @default(cuid())
+  vehicleId   String
+  date        DateTime
+  odometer    Int?
+  title       String
+  description String?
+  category    RepairCategory @default(REPAIR)
+  cost        Float          @default(0)
+  workshop    String?
+  notes       String?
+  createdAt   DateTime       @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+model CleaningEntry {
+  id        String       @id @default(cuid())
+  vehicleId String
+  date      DateTime
+  odometer  Int?
+  type      CleaningType @default(FULL)
+  cost      Float        @default(0)
+  products  String?
+  notes     String?
+  createdAt DateTime     @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}

@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+build
+.env
+.env*.local
+npm-debug.log*
+.DS_Store
+public/sw.js
+public/sw.js.map
+*.tsbuildinfo
+next-env.d.ts
