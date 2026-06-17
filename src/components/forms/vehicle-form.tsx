@@ -43,6 +43,25 @@ export function VehicleForm({
         existingImageId={vehicle?.coverImageId}
       />
 
+      <div className="space-y-2">
+        <Label htmlFor="model3d">3D-Modell (Animation)</Label>
+        <input
+          id="model3d"
+          name="model3d"
+          type="file"
+          accept=".glb,model/gltf-binary"
+          className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-secondary/80"
+        />
+        <p className="text-xs text-muted-foreground">
+          Optional: .glb-Datei hochladen. Das Auto dreht sich dann als Animation
+          (statt Bild) in Garage und Kopfzeile. Die Erstellung dauert nach dem
+          Speichern einen Moment.
+          {vehicle?.animationStatus === "READY" && " — Animation vorhanden."}
+          {vehicle?.animationStatus === "PENDING" && " — Animation wird gerade erstellt …"}
+          {vehicle?.animationStatus === "FAILED" && " — Letzte Erstellung fehlgeschlagen."}
+        </p>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="make">Marke</Label>

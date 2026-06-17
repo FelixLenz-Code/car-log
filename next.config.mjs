@@ -9,10 +9,14 @@ const withSerwist = withSerwistInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // puppeteer (server-side 3D animation rendering) must stay external — it
+  // resolves its own Chromium and must not be bundled by Next.
+  serverExternalPackages: ["puppeteer", "puppeteer-core"],
   experimental: {
     serverActions: {
-      // Allow image uploads (sent as downscaled base64 in the action payload).
-      bodySizeLimit: "12mb",
+      // Allow image uploads (base64) and GLB model uploads (up to ~25MB) in the
+      // action payload.
+      bodySizeLimit: "30mb",
     },
   },
   webpack: (config) => {

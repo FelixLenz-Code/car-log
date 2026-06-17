@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { VehicleMedia } from "@/components/vehicle-media";
+import { hasVehicleMedia } from "@/lib/vehicle-media";
 import { formatKm } from "@/lib/utils";
 
 const fuelTypeLabel: Record<string, string> = {
@@ -75,17 +77,19 @@ export default async function GaragePage() {
             return (
               <Link key={v.id} href={`/vehicles/${v.id}`} className="group">
                 <Card className="glass h-full overflow-hidden transition-colors group-hover:border-primary/40">
-                  {v.coverImageId && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/api/images/${v.coverImageId}`}
+                  {hasVehicleMedia(v) && (
+                    <VehicleMedia
+                      status={v.animationStatus}
+                      videoId={v.animationVideoId}
+                      posterId={v.animationPosterId}
+                      coverImageId={v.coverImageId}
                       alt={v.name}
                       className="h-40 w-full object-cover"
                     />
                   )}
                   <CardContent className="space-y-4 p-6">
                     <div className="flex items-start justify-between">
-                      {!v.coverImageId && (
+                      {!hasVehicleMedia(v) && (
                         <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-primary">
                           <Car className="size-5" />
                         </span>

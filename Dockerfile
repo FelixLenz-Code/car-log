@@ -7,6 +7,8 @@ FROM node:20-bookworm-slim AS deps
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json* ./
+# Use the distro Chromium at runtime instead of puppeteer's bundled download.
+ENV PUPPETEER_SKIP_DOWNLOAD=1
 RUN npm ci
 
 ############################
@@ -27,9 +29,16 @@ RUN npm run build
 ############################
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# openssl (Prisma), ffmpeg (video encoding) and chromium + fonts (headless 3D
+# animation rendering via puppeteer). The chromium package pulls in the
+# required shared libraries.
+RUN apt-get update -y && apt-get install -y \
+      openssl ffmpeg chromium fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV PUPPETEER_SKIP_DOWNLOAD=1
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next

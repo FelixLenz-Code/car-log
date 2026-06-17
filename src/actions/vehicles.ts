@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { requireUser, getOwnedVehicle } from "@/lib/auth/guards";
 import { vehicleSchema } from "@/lib/validation";
 import { saveDataUrlImage, resolveImageUpdate } from "@/lib/images";
+import { readGlbUpload, renderVehicleAnimationJob } from "@/lib/animation";
 
 export type ActionState = { error?: string };
 
@@ -33,10 +35,26 @@ export async function createVehicleAction(
     return { error: parsed.error.errors[0]?.message ?? "Ungültige Eingabe." };
   }
 
+  let glb: Buffer | null;
+  try {
+    glb = await readGlbUpload(formData.get("model3d"));
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
   const coverImageId = await saveDataUrlImage(formData.get("coverImage"));
   const vehicle = await db.vehicle.create({
-    data: { ...parsed.data, coverImageId, userId: user.id },
+    data: {
+      ...parsed.data,
+      coverImageId,
+      userId: user.id,
+      animationStatus: glb ? "PENDING" : "NONE",
+    },
   });
+  if (glb) {
+    const buf = glb;
+    after(() => renderVehicleAnimationJob(vehicle.id, buf, { videoId: null, posterId: null }));
+  }
   revalidatePath("/");
   redirect(`/vehicles/${vehicle.id}`);
 }
@@ -55,14 +73,34 @@ export async function updateVehicleAction(
     return { error: parsed.error.errors[0]?.message ?? "Ungültige Eingabe." };
   }
 
+  let glb: Buffer | null;
+  try {
+    glb = await readGlbUpload(formData.get("model3d"));
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
   const coverImageId = await resolveImageUpdate(
     formData.get("coverImage"),
     owned.coverImageId
   );
   await db.vehicle.update({
     where: { id: vehicleId },
-    data: { ...parsed.data, coverImageId },
+    data: {
+      ...parsed.data,
+      coverImageId,
+      ...(glb ? { animationStatus: "PENDING" } : {}),
+    },
   });
+  if (glb) {
+    const buf = glb;
+    after(() =>
+      renderVehicleAnimationJob(vehicleId, buf, {
+        videoId: owned.animationVideoId,
+        posterId: owned.animationPosterId,
+      })
+    );
+  }
   revalidatePath(`/vehicles/${vehicleId}`);
   revalidatePath("/");
   redirect(`/vehicles/${vehicleId}`);
@@ -83,7 +121,7 @@ export async function deleteVehicleAction(vehicleId: string): Promise<void> {
   await db.image.deleteMany({
     where: {
       OR: [
-        { id: owned.coverImageId ?? "" },
+        { id: { in: [owned.coverImageId, owned.animationVideoId, owned.animationPosterId].filter((x): x is string => !!x) } },
         { repairId: { in: repairs.map((r) => r.id) } },
         { cleaningId: { in: cleanings.map((c) => c.id) } },
       ],

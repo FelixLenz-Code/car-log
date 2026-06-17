@@ -39,6 +39,13 @@ enum ImageKind {
   AFTER
 }
 
+enum AnimationStatus {
+  NONE
+  PENDING
+  READY
+  FAILED
+}
+
 model Image {
   id         String     @id @default(cuid())
   mimeType   String
@@ -91,6 +98,11 @@ model Vehicle {
   fuelType       FuelType @default(PETROL)
   color          String?
   coverImageId   String?
+  // Optional 3D intro animation rendered from an uploaded GLB model. The video
+  // and its poster frame are stored as Image rows; status tracks the async render.
+  animationVideoId  String?
+  animationPosterId String?
+  animationStatus   AnimationStatus @default(NONE)
   initialOdometer Int     @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

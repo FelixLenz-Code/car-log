@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireUser, requireOwnedVehicle } from "@/lib/auth/guards";
 import { VehicleTabs } from "@/components/vehicle-tabs";
+import { VehicleMedia } from "@/components/vehicle-media";
+import { hasVehicleMedia } from "@/lib/vehicle-media";
 
 export default async function VehicleLayout({
   children,
@@ -23,15 +25,17 @@ export default async function VehicleLayout({
         >
           <ArrowLeft className="size-4" /> Garage
         </Link>
-        {vehicle.coverImageId ? (
+        {hasVehicleMedia(vehicle) ? (
           <div className="relative mt-2 overflow-hidden rounded-xl border border-border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/api/images/${vehicle.coverImageId}`}
+            <VehicleMedia
+              status={vehicle.animationStatus}
+              videoId={vehicle.animationVideoId}
+              posterId={vehicle.animationPosterId}
+              coverImageId={vehicle.coverImageId}
               alt={vehicle.name}
               className="h-48 w-full object-cover sm:h-60"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
             <div className="absolute bottom-0 left-0 p-5">
               <h1 className="font-display text-3xl font-semibold tracking-tight">
                 {vehicle.name}
