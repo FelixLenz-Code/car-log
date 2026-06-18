@@ -96,6 +96,43 @@ deine-domain.de {
 #   COOKIE_SECURE="true"
 ```
 
+## Running in an LXC container (Proxmox)
+
+Läuft Docker in einem **unprivilegierten LXC** (typisch bei Proxmox), schlägt der
+Start oft so fehl:
+
+```
+Error response from daemon: failed to create task for container: ...
+open sysctl net.ipv4.ip_unprivileged_port_start file: ... permission denied
+```
+
+Ursache: `runc` will beim Containerstart den sysctl
+`net.ipv4.ip_unprivileged_port_start` setzen, darf das im unprivilegierten LXC
+aber nicht. Zwei Wege beheben das:
+
+1. **Privilegierter LXC mit Nesting** (empfohlen, am robustesten): Container
+   privilegiert anlegen und unter *Options → Features* `nesting=1,keyctl=1`
+   aktivieren.
+2. **Unprivilegiert bleiben** — auf dem Proxmox-Host in
+   `/etc/pve/lxc/<CTID>.conf` ergänzen:
+
+   ```
+   features: nesting=1,keyctl=1
+   lxc.apparmor.profile: unconfined
+   lxc.cgroup2.devices.allow: a
+   lxc.cap.drop:
+   lxc.mount.auto: proc:rw sys:rw
+   ```
+
+   Entscheidend ist `lxc.mount.auto: proc:rw sys:rw` (macht `/proc/sys`
+   beschreibbar). Danach Container neu starten:
+   `pct stop <CTID> && pct start <CTID>`. Hinweis: `apparmor unconfined` +
+   `cap.drop:` lockern die Isolation — Variante 1 ist dann meist die sauberere Wahl.
+
+Sizing-Empfehlung für den LXC: **2–4 vCPU, 4 GB RAM, 10–15 GB Disk** (der
+PDF-/Animations-Render via headless Chromium und der `next build` sind die
+speicherintensiven Schritte).
+
 ## Lokale Entwicklung
 
 ```bash

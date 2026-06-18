@@ -56,6 +56,24 @@ detect_compose() {
 # Run compose inside the install dir (so build context '.' and .env resolve there).
 compose() { ( cd "$DIR" && $COMPOSE "$@" ); }
 
+# Bring the stack up; on failure, print the common LXC/sysctl hint before bailing.
+compose_up() {
+  if ! compose up -d --build; then
+    echo >&2
+    warn "Containers failed to start."
+    warn "Running Docker inside an unprivileged LXC (e.g. Proxmox)? If you saw"
+    warn "  'sysctl net.ipv4.ip_unprivileged_port_start ... permission denied',"
+    warn "the container can't set that sysctl. Fix it by either:"
+    warn "  • making the LXC privileged with features ${B}nesting=1,keyctl=1${N}, or"
+    warn "  • adding to the host's /etc/pve/lxc/<CTID>.conf:"
+    warn "      features: nesting=1,keyctl=1"
+    warn "      lxc.apparmor.profile: unconfined"
+    warn "      lxc.mount.auto: proc:rw sys:rw"
+    warn "  then restart the container (pct stop <CTID> && pct start <CTID>)."
+    die "See the README ('Running in an LXC container') for details."
+  fi
+}
+
 gen_secret() { openssl rand -hex 32 2>/dev/null || head -c32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 gen_password() {
   # strong, .env/compose-safe (alphanumeric only — no $ " \ that would break interpolation)
@@ -184,7 +202,7 @@ cmd_install() {
   write_env
 
   info "Building & starting containers (first build can take a few minutes) ..."
-  compose up -d --build
+  compose_up
 
   echo
   ok "${B}Car-Log ${ref}${N} is up."
@@ -224,7 +242,7 @@ cmd_update() {
   merge_new_env_keys
 
   info "Rebuilding & starting (migrations run automatically) ..."
-  compose up -d --build
+  compose_up
 
   ok "Updated to ${B}$new${N}.  ${C}$(access_url)${N}"
 }
