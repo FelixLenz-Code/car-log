@@ -147,8 +147,7 @@ function renderPageHtml(): string {
     // Neutral (Khronos PBR) tone mapping keeps colour/saturation far better than
     // ACES, which washes a near-neutral paint out to greyscale.
     renderer.toneMapping = THREE.NeutralToneMapping;
-    // Slightly under 1.0 deepens the blacks → richer, more premium contrast.
-    renderer.toneMappingExposure = 0.96;
+    renderer.toneMappingExposure = 1.08;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -221,9 +220,9 @@ function renderPageHtml(): string {
     rim.position.set(-3, 4, -6);
     scene.add(rim);
 
-    // Lower ambient → deeper, more dramatic shadows (less flat, more premium).
-    // Slightly cool tint keeps the warm light / cool shadow split-tone.
-    scene.add(new THREE.AmbientLight(0xc2cdff, 0.08));
+    // A little ambient lifts the shadows so the whole car reads brighter while
+    // keeping the cool tint for the warm light / cool shadow split-tone.
+    scene.add(new THREE.AmbientLight(0xc2cdff, 0.14));
 
     pivot = new THREE.Group();
     scene.add(pivot);
