@@ -19,14 +19,13 @@ const nextConfig = {
   serverExternalPackages: ["puppeteer", "puppeteer-core", "three"],
   experimental: {
     serverActions: {
-      // Allow image uploads (base64) and GLB model uploads (up to ~25MB) in the
-      // action payload.
-      bodySizeLimit: "30mb",
+      // Headroom for GLB model uploads (~17MB) and vehicle import ZIPs, which
+      // can bundle the 3D video plus many photos.
+      bodySizeLimit: "100mb",
     },
     // Middleware buffers the request body and caps it independently of
-    // serverActions.bodySizeLimit (default 10MB). GLB models are ~17MB, so the
-    // body got truncated → "Unexpected end of form". Match the action limit.
-    middlewareClientMaxBodySize: "30mb",
+    // serverActions.bodySizeLimit (default 10MB) — keep them in sync.
+    middlewareClientMaxBodySize: "100mb",
   },
   webpack: (config) => {
     // tesseract.js is loaded only in the browser (OCR for odometer/fuel capture).

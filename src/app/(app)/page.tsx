@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { VehicleMedia } from "@/components/vehicle-media";
+import { ImportVehicleButton } from "@/components/import-vehicle-button";
 import { hasVehicleMedia } from "@/lib/vehicle-media";
 import { formatKm } from "@/lib/utils";
 
@@ -41,9 +42,12 @@ export default async function GaragePage() {
               : `${vehicles.length} Fahrzeug${vehicles.length === 1 ? "" : "e"}`}
           </p>
         </div>
-        <Link href="/vehicles/new" className={buttonVariants()}>
-          <Plus className="size-4" /> Fahrzeug
-        </Link>
+        <div className="flex items-start gap-2">
+          <ImportVehicleButton />
+          <Link href="/vehicles/new" className={buttonVariants()}>
+            <Plus className="size-4" /> Fahrzeug
+          </Link>
+        </div>
       </div>
 
       {vehicles.length === 0 ? (

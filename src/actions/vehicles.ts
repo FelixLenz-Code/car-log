@@ -8,8 +8,12 @@ import { requireUser, getOwnedVehicle } from "@/lib/auth/guards";
 import { vehicleSchema } from "@/lib/validation";
 import { saveDataUrlImage, resolveImageUpdate } from "@/lib/images";
 import { readGlbUpload, renderVehicleAnimationJob } from "@/lib/animation";
+import { importVehicleZip } from "@/lib/vehicle-transfer";
 
 export type ActionState = { error?: string };
+
+// Safety cap; the practical limit is the server action body size (next.config).
+const MAX_IMPORT_BYTES = 100 * 1024 * 1024;
 
 function parseVehicle(formData: FormData) {
   return vehicleSchema.safeParse({
@@ -102,6 +106,31 @@ export async function updateVehicleAction(
     );
   }
   revalidatePath(`/vehicles/${vehicleId}`);
+  revalidatePath("/");
+  redirect(`/vehicles/${vehicleId}`);
+}
+
+export async function importVehicleAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const user = await requireUser();
+  const file = formData.get("archive");
+  if (!file || typeof file === "string" || file.size === 0) {
+    return { error: "Bitte eine Export-ZIP auswählen." };
+  }
+  if (file.size > MAX_IMPORT_BYTES) {
+    return { error: "Datei zu groß (max. 100 MB)." };
+  }
+
+  let vehicleId: string;
+  try {
+    const buf = Buffer.from(await file.arrayBuffer());
+    ({ vehicleId } = await importVehicleZip(buf, user.id));
+  } catch (e) {
+    return { error: (e as Error).message || "Import fehlgeschlagen." };
+  }
+
   revalidatePath("/");
   redirect(`/vehicles/${vehicleId}`);
 }
