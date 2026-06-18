@@ -16,9 +16,36 @@ angelegt; Anmeldung per E-Mail + Passwort (argon2id-Hashing, serverseitige Sessi
 - Auth: eigene DB-Sessions (httpOnly-Cookie) + **argon2id**
 - Auslieferung via **Docker Compose** (App + DB)
 
-## Schnellstart (Linux-Server, empfohlen)
+## Installation in einem Befehl (empfohlen)
 
-Voraussetzung: Docker + Docker Compose.
+Voraussetzung: **Docker** (inkl. Compose-Plugin) + `curl`. Der Installer lädt die
+aktuelle Version von GitHub, erzeugt `.env` mit zufälligem DB-Passwort und
+Session-Secret, fragt (falls Terminal) nach Admin-Zugang und startet alles:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/car-log/main/install.sh | bash
+```
+
+Installiert nach `./car-log` (über `CARLOG_DIR` änderbar). Danach läuft die App auf
+`http://<server>:3000` (Port via `CARLOG_PORT`). Der generierte Admin und das
+Passwort werden am Ende ausgegeben — notieren!
+
+### Update
+
+Holt die neueste Version, **behält Daten und `.env`** (DB liegt im Docker-Volume):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/car-log/main/install.sh | bash -s -- update
+# ...oder aus dem Installationsverzeichnis:
+./car-log/install.sh update          # erzwingen: update --force
+```
+
+Weitere Befehle: `install.sh status` · `logs` · `uninstall [--purge]`.
+Optionen per Umgebungsvariable: `CARLOG_DIR`, `CARLOG_REF` (Tag/Branch), `CARLOG_PORT`,
+`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `COOKIE_SECURE`.
+
+<details>
+<summary>Manuelle Alternative (ohne Installer)</summary>
 
 ```bash
 # 1. Konfiguration anlegen
@@ -31,6 +58,7 @@ docker compose up -d --build
 # 3. Öffnen
 #    http://<server>:3000  (Port via APP_PORT in .env änderbar)
 ```
+</details>
 
 Beim ersten Start werden die DB-Migrationen angewendet und der Admin-Account aus
 `ADMIN_EMAIL` / `ADMIN_PASSWORD` angelegt. Danach meldest du dich als Admin an und
