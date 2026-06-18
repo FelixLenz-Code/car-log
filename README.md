@@ -30,6 +30,10 @@ Installiert nach `./car-log` (über `CARLOG_DIR` änderbar). Danach läuft die A
 `http://<server>:3000` (Port via `CARLOG_PORT`). Der generierte Admin und das
 Passwort werden am Ende ausgegeben — notieren!
 
+Führst du **denselben Befehl erneut** aus und es existiert bereits eine Installation,
+aktualisiert der Installer sie automatisch (Daten & `.env` bleiben erhalten) — du
+brauchst `update` also nicht zwingend.
+
 ### Update
 
 Holt die neueste Version, **behält Daten und `.env`** (DB liegt im Docker-Volume):

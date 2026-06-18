@@ -164,14 +164,18 @@ access_url() {
 # ---------- commands ----------
 cmd_install() {
   require_tools; detect_compose
-  local ref; ref=$(resolve_ref)
 
+  # If Car-Log is already installed here, a plain install upgrades it instead of
+  # bailing out — so the same one-liner both installs and updates (keeping the
+  # database volume and the existing .env). Use a different CARLOG_DIR for a
+  # second, independent instance.
   if [ -f "$DIR/docker-compose.yml" ] && [ -f "$DIR/.env" ]; then
-    warn "An install already exists in ${B}$DIR${N}."
-    info "Run ${B}update${N} to upgrade it, or set CARLOG_DIR to a new path."
-    exit 1
+    info "Existing install detected in ${B}$DIR${N} — running update instead."
+    cmd_update "$@"
+    return
   fi
 
+  local ref; ref=$(resolve_ref)
   mkdir -p "$DIR"
   download_into "$ref" "$DIR"
   printf '%s\n' "$ref" > "$DIR/.carlog-version"
@@ -262,7 +266,7 @@ else
 fi
 
 case "$CMD" in
-  install)            cmd_install ;;
+  install)            cmd_install "$@" ;;
   update|upgrade)     cmd_update "$@" ;;
   status|ps)          cmd_status ;;
   logs)               cmd_logs ;;
