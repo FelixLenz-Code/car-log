@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { requireUser, getVehicleAccess } from "@/lib/auth/guards";
+import { notifyOwnerOfActivity } from "@/lib/notify";
 import { saveEntryImages } from "@/lib/images";
 import {
   saveRepairAttachments,
@@ -27,11 +29,41 @@ export type ActionState = { error?: string; success?: string };
  * owner id so owner-scoped resources (canisters) resolve correctly even when
  * a shared editor is the one writing.
  */
-async function assertCanEdit(vehicleId: string): Promise<{ ownerId: string }> {
+async function assertCanEdit(
+  vehicleId: string
+): Promise<{ ownerId: string; actorId: string; actorName: string; isOwner: boolean }> {
   const user = await requireUser();
   const access = await getVehicleAccess(vehicleId, user.id);
   if (!access || access.level === "VIEWER") throw new Error("forbidden");
-  return { ownerId: access.ownerId };
+  return {
+    ownerId: access.ownerId,
+    actorId: user.id,
+    actorName: user.name,
+    isOwner: access.level === "OWNER",
+  };
+}
+
+/**
+ * Schedule an owner notification after the response when a shared editor (not
+ * the owner) made a change. Fire-and-forget so it never blocks the write.
+ */
+function notifyActivity(
+  meta: { ownerId: string; actorId: string; actorName: string; isOwner: boolean },
+  vehicleId: string,
+  summary: string,
+  path: string
+) {
+  if (meta.isOwner) return;
+  after(() =>
+    notifyOwnerOfActivity({
+      vehicleId,
+      ownerId: meta.ownerId,
+      actorId: meta.actorId,
+      actorName: meta.actorName,
+      summary,
+      path,
+    })
+  );
 }
 
 function fail(parsed: { error: { errors: { message: string }[] } }): ActionState {
@@ -45,7 +77,8 @@ export async function createFuelAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { ownerId } = await assertCanEdit(vehicleId);
+  const meta = await assertCanEdit(vehicleId);
+  const { ownerId } = meta;
   const parsed = fuelSchema.safeParse({
     date: formData.get("date"),
     odometer: formData.get("odometer"),
@@ -94,6 +127,7 @@ export async function createFuelAction(
 
   revalidatePath(`/vehicles/${vehicleId}/fuel`);
   revalidatePath(`/vehicles/${vehicleId}`);
+  notifyActivity(meta, vehicleId, "hat eine Tankung hinzugefügt", `/vehicles/${vehicleId}/fuel`);
   return {
     success: fills.length ? `Tankung + ${fills.length} Kanister gespeichert.` : "Tankung gespeichert.",
   };
@@ -145,7 +179,7 @@ export async function createOdometerAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  await assertCanEdit(vehicleId);
+  const meta = await assertCanEdit(vehicleId);
   const parsed = odometerSchema.safeParse({
     date: formData.get("date"),
     odometer: formData.get("odometer"),
@@ -156,6 +190,7 @@ export async function createOdometerAction(
   await db.odometerEntry.create({ data: { ...parsed.data, vehicleId } });
   revalidatePath(`/vehicles/${vehicleId}/mileage`);
   revalidatePath(`/vehicles/${vehicleId}`);
+  notifyActivity(meta, vehicleId, "hat einen Kilometerstand erfasst", `/vehicles/${vehicleId}/mileage`);
   return { success: "Kilometerstand gespeichert." };
 }
 
@@ -198,7 +233,7 @@ export async function createRepairAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  await assertCanEdit(vehicleId);
+  const meta = await assertCanEdit(vehicleId);
   const parsed = repairSchema.safeParse({
     date: formData.get("date"),
     odometer: formData.get("odometer"),
@@ -229,6 +264,7 @@ export async function createRepairAction(
   );
   revalidatePath(`/vehicles/${vehicleId}/repairs`);
   revalidatePath(`/vehicles/${vehicleId}`);
+  notifyActivity(meta, vehicleId, `hat „${parsed.data.title}" ins Reparaturbuch eingetragen`, `/vehicles/${vehicleId}/repairs`);
   return { success: "Eintrag gespeichert." };
 }
 
@@ -287,7 +323,7 @@ export async function createCleaningAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  await assertCanEdit(vehicleId);
+  const meta = await assertCanEdit(vehicleId);
   const parsed = cleaningSchema.safeParse({
     date: formData.get("date"),
     odometer: formData.get("odometer"),
@@ -311,6 +347,7 @@ export async function createCleaningAction(
   });
   revalidatePath(`/vehicles/${vehicleId}/cleaning`);
   revalidatePath(`/vehicles/${vehicleId}`);
+  notifyActivity(meta, vehicleId, "hat einen Pflege-Eintrag hinzugefügt", `/vehicles/${vehicleId}/cleaning`);
   return { success: "Eintrag gespeichert." };
 }
 
