@@ -21,6 +21,7 @@
 #   ADMIN_NAME    admin display name           (default: Administrator)
 #   COOKIE_SECURE "true" behind HTTPS          (default: false)
 #   CARLOG_FRESH  "1" = on update, wipe data & settings and set up a fresh server
+#   CARLOG_BUILD  "1" = build the image locally instead of pulling the release image
 #
 set -euo pipefail
 
@@ -58,8 +59,24 @@ detect_compose() {
 compose() { ( cd "$DIR" && $COMPOSE "$@" ); }
 
 # Bring the stack up; on failure, print the common LXC/sysctl hint before bailing.
+# Prefers the prebuilt image published with each release (fast); falls back to a
+# local build when no matching image can be pulled (non-release ref, an
+# architecture without a published image, or offline) or when CARLOG_BUILD=1.
 compose_up() {
-  if ! compose up -d --build; then
+  local build=0
+  if [ "${CARLOG_BUILD:-0}" = 1 ]; then
+    info "CARLOG_BUILD=1 — building the image from source."
+    build=1
+  elif compose pull; then
+    ok "Fetched the prebuilt image — no local build needed."
+  else
+    warn "No prebuilt image for this version/architecture (or offline) — building from source; this can take a few minutes."
+    build=1
+  fi
+
+  local extra=""
+  [ "$build" = 1 ] && extra="--build"
+  if ! compose up -d $extra; then
     echo >&2
     warn "Containers failed to start."
     warn "Running Docker inside an unprivileged LXC (e.g. Proxmox)? If you saw"
@@ -202,11 +219,13 @@ cmd_install() {
   mkdir -p "$DIR"
   download_into "$ref" "$DIR"
   printf '%s\n' "$ref" > "$DIR/.carlog-version"
+  # Tell compose which published image to pull (matches the installed version).
+  export CARLOG_IMAGE_TAG="$ref"
 
   info "Configuring ${B}$DIR/.env${N} ..."
   write_env
 
-  info "Building & starting containers (first build can take a few minutes) ..."
+  info "Starting containers ..."
   compose_up
 
   echo
@@ -267,11 +286,12 @@ cmd_update_fresh() {
   download_into "$new" "$DIR"
   rm -f "$DIR/.env"            # drop old settings so write_env reconfigures cleanly
   printf '%s\n' "$new" > "$DIR/.carlog-version"
+  export CARLOG_IMAGE_TAG="$new"
 
   info "Configuring ${B}$DIR/.env${N} ..."
   write_env
 
-  info "Building & starting containers (migrations & admin seed run automatically) ..."
+  info "Starting containers (migrations & admin seed run automatically) ..."
   compose_up
 
   echo
@@ -324,9 +344,10 @@ cmd_update() {
   download_into "$new" "$DIR"
   cp "$tmp/.env" "$DIR/.env"; rm -rf "$tmp"
   printf '%s\n' "$new" > "$DIR/.carlog-version"
+  export CARLOG_IMAGE_TAG="$new"
   merge_new_env_keys
 
-  info "Rebuilding & starting (migrations run automatically) ..."
+  info "Starting (migrations run automatically) ..."
   compose_up
 
   ok "Updated to ${B}$new${N}.  ${C}$(access_url)${N}"
@@ -356,7 +377,7 @@ ${B}Car-Log installer${N}
   logs                 Tail application logs
   uninstall [--purge]  Stop (and with --purge, delete the database volume)
 
-Env: CARLOG_DIR, CARLOG_REF, CARLOG_PORT, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME, COOKIE_SECURE, CARLOG_FRESH
+Env: CARLOG_DIR, CARLOG_REF, CARLOG_PORT, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME, COOKIE_SECURE, CARLOG_FRESH, CARLOG_BUILD
 EOF
 }
 
