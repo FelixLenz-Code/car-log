@@ -45,6 +45,32 @@ export async function createReminderAction(
   return { success: "Erinnerung gespeichert." };
 }
 
+/** Create a reminder from an auto-generated suggestion (source = AUTO). */
+export async function acceptReminderSuggestionAction(vehicleId: string, formData: FormData) {
+  await assertCanEdit(vehicleId);
+  const type = String(formData.get("type") ?? "");
+  const title = String(formData.get("title") ?? "").trim().slice(0, 120);
+  const dueRaw = String(formData.get("dueDate") ?? "");
+  const recurrence = Number(formData.get("recurrenceMonths"));
+  const dueDate = dueRaw ? new Date(dueRaw) : null;
+
+  if (!["INSPECTION", "SERVICE", "INSURANCE", "TAX"].includes(type)) return;
+  if (!title || !dueDate || isNaN(dueDate.getTime())) return;
+
+  await db.reminder.create({
+    data: {
+      vehicleId,
+      type: type as "INSPECTION" | "SERVICE" | "INSURANCE" | "TAX",
+      title,
+      dueDate,
+      leadDays: 28,
+      recurrenceMonths: Number.isFinite(recurrence) && recurrence > 0 ? recurrence : null,
+      source: "AUTO",
+    },
+  });
+  revalidatePath(`/vehicles/${vehicleId}/reminders`);
+}
+
 export async function deleteReminderAction(vehicleId: string, id: string) {
   await assertCanEdit(vehicleId);
   await db.reminder.deleteMany({ where: { id, vehicleId } });

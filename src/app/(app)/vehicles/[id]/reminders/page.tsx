@@ -4,10 +4,12 @@ import {
   createReminderAction,
   deleteReminderAction,
   toggleReminderAction,
+  acceptReminderSuggestionAction,
 } from "@/actions/reminders";
+import { suggestReminders } from "@/lib/reminder-suggestions";
 import { ReminderForm } from "@/components/forms/reminder-form";
 import { DeleteButton } from "@/components/delete-button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatKm } from "@/lib/utils";
@@ -53,17 +55,56 @@ export default async function RemindersPage({
   });
   if (!vehicle) return null;
 
+  // Auto-suggestions derived from history (only useful for editors).
+  const suggestions = canEdit ? await suggestReminders(id) : [];
+
   return (
     <div className={canEdit ? "grid gap-6 lg:grid-cols-[420px_1fr]" : "space-y-6"}>
       {canEdit && (
-        <Card className="glass h-fit">
-          <CardHeader>
-            <CardTitle>Neue Erinnerung</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ReminderForm action={createReminderAction.bind(null, id)} />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card className="glass h-fit">
+            <CardHeader>
+              <CardTitle>Neue Erinnerung</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ReminderForm action={createReminderAction.bind(null, id)} />
+            </CardContent>
+          </Card>
+
+          {suggestions.length > 0 && (
+            <Card className="glass h-fit">
+              <CardHeader>
+                <CardTitle>Vorschläge</CardTitle>
+                <CardDescription>Aus deinem Verlauf geschätzt.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {suggestions.map((s) => (
+                  <div
+                    key={s.type}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-background/40 p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium">{s.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        fällig {formatDate(new Date(s.dueDate))} · alle {s.recurrenceMonths} Mon.
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{s.reason}</p>
+                    </div>
+                    <form action={acceptReminderSuggestionAction.bind(null, id)}>
+                      <input type="hidden" name="type" value={s.type} />
+                      <input type="hidden" name="title" value={s.title} />
+                      <input type="hidden" name="dueDate" value={s.dueDate} />
+                      <input type="hidden" name="recurrenceMonths" value={s.recurrenceMonths} />
+                      <Button type="submit" size="sm" variant="outline" className="shrink-0">
+                        Übernehmen
+                      </Button>
+                    </form>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       <Card className="glass">
