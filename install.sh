@@ -131,7 +131,7 @@ write_env() {
   local generated_pw=0
   if [ -z "$admin_pass" ]; then admin_pass=$(gen_password); generated_pw=1; fi
   case "$admin_pass" in
-    *['"$\`']*) warn "Admin password contains \$ \" \\ or backtick — these can break .env; consider a simpler one.";;
+    *"'"*) warn "Admin password contains a single quote (') — it can't be stored safely in .env; please choose a password without it.";;
   esac
 
   GENERATED_ADMIN_PW="$admin_pass"; GENERATED_ADMIN_PW_SHOWN="$generated_pw"; ADMIN_EMAIL_FINAL="$admin_email"
@@ -139,16 +139,20 @@ write_env() {
   # Build .env from .env.example, replacing only the values of known keys.
   local src="$DIR/.env.example" out="$DIR/.env"
   [ -f "$src" ] || die ".env.example missing in download — aborting."
+  # Values are written single-quoted. Docker Compose interpolates env values
+  # (e.g. "$$" -> "$", "${X}" -> expansion), which silently corrupts passwords
+  # containing '$', '"', '\' or backticks. Single quotes are passed through
+  # literally, so the password the seed receives matches what the user entered.
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
-      DATABASE_URL=*)     printf 'DATABASE_URL="postgresql://carlog:%s@db:5432/carlog?schema=public"\n' "$dbpass";;
-      POSTGRES_PASSWORD=*) printf 'POSTGRES_PASSWORD="%s"\n' "$dbpass";;
-      SESSION_SECRET=*)   printf 'SESSION_SECRET="%s"\n' "$session_secret";;
-      ADMIN_EMAIL=*)      printf 'ADMIN_EMAIL="%s"\n' "$admin_email";;
-      ADMIN_PASSWORD=*)   printf 'ADMIN_PASSWORD="%s"\n' "$admin_pass";;
-      ADMIN_NAME=*)       printf 'ADMIN_NAME="%s"\n' "$admin_name";;
-      COOKIE_SECURE=*)    printf 'COOKIE_SECURE="%s"\n' "$cookie_secure";;
-      APP_PORT=*)         printf 'APP_PORT="%s"\n' "$app_port";;
+      DATABASE_URL=*)     printf "DATABASE_URL='postgresql://carlog:%s@db:5432/carlog?schema=public'\n" "$dbpass";;
+      POSTGRES_PASSWORD=*) printf "POSTGRES_PASSWORD='%s'\n" "$dbpass";;
+      SESSION_SECRET=*)   printf "SESSION_SECRET='%s'\n" "$session_secret";;
+      ADMIN_EMAIL=*)      printf "ADMIN_EMAIL='%s'\n" "$admin_email";;
+      ADMIN_PASSWORD=*)   printf "ADMIN_PASSWORD='%s'\n" "$admin_pass";;
+      ADMIN_NAME=*)       printf "ADMIN_NAME='%s'\n" "$admin_name";;
+      COOKIE_SECURE=*)    printf "COOKIE_SECURE='%s'\n" "$cookie_secure";;
+      APP_PORT=*)         printf "APP_PORT='%s'\n" "$app_port";;
       *)                  printf '%s\n' "$line";;
     esac
   done < "$src" > "$out"
