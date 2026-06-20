@@ -45,6 +45,50 @@ export async function createReminderAction(
   return { success: "Erinnerung gespeichert." };
 }
 
+export async function updateReminderAction(
+  vehicleId: string,
+  id: string,
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await assertCanEdit(vehicleId);
+  const parsed = reminderSchema.safeParse({
+    type: formData.get("type"),
+    title: formData.get("title"),
+    dueDate: formData.get("dueDate"),
+    dueOdometer: formData.get("dueOdometer"),
+    leadDays: formData.get("leadDays"),
+    intervalDays: formData.get("intervalDays"),
+    recurrenceMonths: formData.get("recurrenceMonths"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Ungültige Eingabe." };
+  }
+  const d = parsed.data;
+  if (d.type === "LOG") {
+    d.intervalDays = d.intervalDays ?? 30;
+  } else if (!d.dueDate && d.dueOdometer == null) {
+    return { error: "Bitte ein Fälligkeitsdatum oder einen Kilometerstand angeben." };
+  }
+
+  // For non-LOG reminders, clear the trigger that wasn't used.
+  const data = {
+    ...d,
+    dueDate: d.type === "LOG" ? null : d.dueDate ?? null,
+    dueOdometer: d.type === "LOG" ? null : d.dueOdometer ?? null,
+    intervalDays: d.type === "LOG" ? d.intervalDays : null,
+    // Editing makes it user-managed, so auto-sync won't overwrite it; allow it
+    // to fire again under the new schedule.
+    source: "MANUAL",
+    lastNotifiedAt: null,
+  };
+  const { count } = await db.reminder.updateMany({ where: { id, vehicleId }, data });
+  if (count === 0) return { error: "Erinnerung nicht gefunden." };
+
+  revalidatePath(`/vehicles/${vehicleId}/reminders`);
+  return { success: "Erinnerung aktualisiert." };
+}
+
 /** Create a reminder from an auto-generated suggestion (source = AUTO). */
 export async function acceptReminderSuggestionAction(vehicleId: string, formData: FormData) {
   await assertCanEdit(vehicleId);

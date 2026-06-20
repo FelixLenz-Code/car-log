@@ -2,12 +2,14 @@ import { requireUser, vehicleAccessWhere, getVehicleAccess } from "@/lib/auth/gu
 import { db } from "@/lib/db";
 import {
   createReminderAction,
+  updateReminderAction,
   deleteReminderAction,
   toggleReminderAction,
   acceptReminderSuggestionAction,
 } from "@/actions/reminders";
 import { suggestReminders } from "@/lib/reminder-suggestions";
 import { ReminderForm } from "@/components/forms/reminder-form";
+import { EditableRow } from "@/components/editable-row";
 import { DeleteButton } from "@/components/delete-button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -118,13 +120,38 @@ export default async function RemindersPage({
             </p>
           )}
           {vehicle.reminders.map((r) => (
-            <div
+            <EditableRow
               key={r.id}
-              className={`flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-background/40 p-3 ${
-                r.active ? "" : "opacity-60"
-              }`}
+              edit={
+                canEdit ? (
+                  <ReminderForm
+                    action={updateReminderAction.bind(null, id, r.id)}
+                    defaults={{
+                      type: r.type,
+                      title: r.title,
+                      dueDate: r.dueDate ? r.dueDate.toISOString().slice(0, 10) : "",
+                      dueOdometer: r.dueOdometer,
+                      leadDays: r.leadDays,
+                      intervalDays: r.intervalDays,
+                      recurrenceMonths: r.recurrenceMonths,
+                    }}
+                  />
+                ) : undefined
+              }
+              deleteButton={
+                canEdit ? (
+                  <>
+                    <form action={toggleReminderAction.bind(null, id, r.id)}>
+                      <Button type="submit" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                        {r.active ? "Pausieren" : "Aktivieren"}
+                      </Button>
+                    </form>
+                    <DeleteButton action={deleteReminderAction.bind(null, id, r.id)} />
+                  </>
+                ) : undefined
+              }
             >
-              <div className="min-w-0">
+              <div className={r.active ? "" : "opacity-60"}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{r.title}</span>
                   <Badge variant="secondary">{typeLabel[r.type]}</Badge>
@@ -132,17 +159,7 @@ export default async function RemindersPage({
                 </div>
                 <p className="mt-0.5 text-sm text-muted-foreground">{dueText(r)}</p>
               </div>
-              {canEdit && (
-                <div className="flex shrink-0 items-center gap-1">
-                  <form action={toggleReminderAction.bind(null, id, r.id)}>
-                    <Button type="submit" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                      {r.active ? "Pausieren" : "Aktivieren"}
-                    </Button>
-                  </form>
-                  <DeleteButton action={deleteReminderAction.bind(null, id, r.id)} />
-                </div>
-              )}
-            </div>
+            </EditableRow>
           ))}
         </CardContent>
       </Card>

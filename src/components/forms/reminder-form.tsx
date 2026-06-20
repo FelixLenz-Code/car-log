@@ -30,20 +30,46 @@ const TYPE_DEFAULTS: Record<string, { title: string; recurrence?: number }> = {
   CUSTOM: { title: "" },
 };
 
-export function ReminderForm({ action }: { action: Action }) {
+export type ReminderDefaults = {
+  type: string;
+  title: string;
+  dueDate: string; // yyyy-mm-dd or ""
+  dueOdometer: number | null;
+  leadDays: number;
+  intervalDays: number | null;
+  recurrenceMonths: number | null;
+};
+
+export function ReminderForm({
+  action,
+  defaults,
+  onDone,
+}: {
+  action: Action;
+  defaults?: ReminderDefaults;
+  onDone?: () => void;
+}) {
+  const editing = !!defaults;
   const [state, formAction] = useActionState(action, {});
   const ref = useRef<HTMLFormElement>(null);
-  const [type, setType] = useState("INSPECTION");
-  const [title, setTitle] = useState(TYPE_DEFAULTS.INSPECTION.title);
-  const [recurrence, setRecurrence] = useState(String(TYPE_DEFAULTS.INSPECTION.recurrence ?? ""));
+  const [type, setType] = useState(defaults?.type ?? "INSPECTION");
+  const [title, setTitle] = useState(defaults?.title ?? TYPE_DEFAULTS.INSPECTION.title);
+  const [recurrence, setRecurrence] = useState(
+    defaults
+      ? String(defaults.recurrenceMonths ?? "")
+      : String(TYPE_DEFAULTS.INSPECTION.recurrence ?? "")
+  );
 
   useEffect(() => {
-    if (state.success) {
-      ref.current?.reset();
-      setType("INSPECTION");
-      setTitle(TYPE_DEFAULTS.INSPECTION.title);
-      setRecurrence(String(TYPE_DEFAULTS.INSPECTION.recurrence ?? ""));
+    if (!state.success) return;
+    if (editing) {
+      onDone?.();
+      return;
     }
+    ref.current?.reset();
+    setType("INSPECTION");
+    setTitle(TYPE_DEFAULTS.INSPECTION.title);
+    setRecurrence(String(TYPE_DEFAULTS.INSPECTION.recurrence ?? ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
 
@@ -76,21 +102,21 @@ export function ReminderForm({ action }: { action: Action }) {
         {isLog ? (
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="intervalDays">Erinnern, wenn länger nichts eingetragen wurde</Label>
-            <InputUnit id="intervalDays" name="intervalDays" type="number" min={1} unit="Tage" defaultValue={30} />
+            <InputUnit id="intervalDays" name="intervalDays" type="number" min={1} unit="Tage" defaultValue={defaults?.intervalDays ?? 30} />
           </div>
         ) : (
           <>
             <div className="space-y-2">
               <Label htmlFor="dueDate">Fällig am</Label>
-              <Input id="dueDate" name="dueDate" type="date" />
+              <Input id="dueDate" name="dueDate" type="date" defaultValue={defaults?.dueDate ?? ""} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="dueOdometer">…oder bei km-Stand</Label>
-              <InputUnit id="dueOdometer" name="dueOdometer" type="number" min={0} unit="km" />
+              <InputUnit id="dueOdometer" name="dueOdometer" type="number" min={0} unit="km" defaultValue={defaults?.dueOdometer ?? ""} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="leadDays">Vorlauf</Label>
-              <InputUnit id="leadDays" name="leadDays" type="number" min={0} unit="Tage" defaultValue={28} />
+              <InputUnit id="leadDays" name="leadDays" type="number" min={0} unit="Tage" defaultValue={defaults?.leadDays ?? 28} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="recurrenceMonths">Wiederholung (optional)</Label>
@@ -105,7 +131,7 @@ export function ReminderForm({ action }: { action: Action }) {
           ? "Du wirst erinnert, wenn seit der angegebenen Zahl an Tagen keine Tankung, Kilometer-, Reparatur- oder Pflege-Erfassung erfolgt ist."
           : "Du wirst rechtzeitig vor dem Datum (bzw. beim Erreichen des km-Stands) benachrichtigt. Mit Wiederholung rollt das Datum nach Fälligkeit automatisch weiter."}
       </p>
-      <SubmitButton>Erinnerung hinzufügen</SubmitButton>
+      <SubmitButton>{editing ? "Speichern" : "Erinnerung hinzufügen"}</SubmitButton>
     </form>
   );
 }
