@@ -21,7 +21,7 @@ export function AppNav({
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
             <Car className="size-5" />
           </span>
-          <span className="font-display text-lg font-semibold tracking-tight">
+          <span className="hidden font-display text-lg font-semibold tracking-tight sm:inline">
             Car Log
           </span>
         </Link>
