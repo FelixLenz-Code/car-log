@@ -75,8 +75,21 @@ export async function runDueReminders(now = new Date()): Promise<number> {
         body = `${r.title}: seit ${Math.floor(since)} Tagen kein Eintrag.`;
       }
     } else if (r.dueDate) {
-      const notifyFrom = new Date(r.dueDate.getTime() - r.leadDays * DAY);
-      if (now >= notifyFrom && (!r.lastNotifiedAt || r.lastNotifiedAt < notifyFrom)) {
+      // HU/AU notifies twice: an early heads-up ~2 months out plus the regular
+      // lead time. Other reminders just use their single lead. We fire once per
+      // threshold as it's crossed (the latest passed-but-not-yet-notified one).
+      const leads =
+        r.type === "INSPECTION"
+          ? Array.from(new Set([60, r.leadDays])).sort((a, b) => b - a)
+          : [r.leadDays];
+      let chosen: Date | null = null;
+      for (const lead of leads) {
+        const t = new Date(r.dueDate.getTime() - lead * DAY);
+        if (now >= t && (!r.lastNotifiedAt || r.lastNotifiedAt < t)) {
+          if (!chosen || t > chosen) chosen = t;
+        }
+      }
+      if (chosen) {
         const d = Math.ceil(daysUntil(r.dueDate, now));
         body =
           d >= 0
