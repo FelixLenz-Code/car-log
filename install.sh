@@ -385,11 +385,20 @@ EOF
 CMD="${1:-install}"; [ $# -gt 0 ] && shift || true
 
 # Resolve install directory. For update/status/logs/uninstall, auto-detect the
-# current directory if it already looks like an install.
+# current directory if it already looks like an install. The app was renamed from
+# "Car Log" to "Kilomondo", so we still honor the legacy CARLOG_DIR env and the
+# old default ./car-log directory — otherwise the one-liner would silently create
+# a second instance instead of updating an existing Car Log install in place.
 if [ -n "${KILOMONDO_DIR:-}" ]; then
   DIR="$KILOMONDO_DIR"
+elif [ -n "${CARLOG_DIR:-}" ]; then
+  DIR="$CARLOG_DIR"
 elif [ "$CMD" != "install" ] && [ -f "./docker-compose.yml" ] && { [ -f "./.carlog-version" ] || [ -f "./.env" ]; }; then
   DIR="."
+elif [ -f "./kilomondo/docker-compose.yml" ]; then
+  DIR="./kilomondo"
+elif [ -f "./car-log/docker-compose.yml" ]; then
+  DIR="./car-log"
 else
   DIR="./kilomondo"
 fi
