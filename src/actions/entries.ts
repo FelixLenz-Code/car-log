@@ -320,9 +320,18 @@ export async function updateRepairAction(
 
 export async function deleteRepairAction(vehicleId: string, id: string) {
   await assertCanEdit(vehicleId);
+  const entry = await db.repairEntry.findFirst({
+    where: { id, vehicleId },
+    select: { category: true },
+  });
   await db.repairEntry.deleteMany({ where: { id, vehicleId } });
   await db.image.deleteMany({ where: { repairId: id } });
   await deleteRepairAttachments(id);
+  // If this was an HU/AU entry, re-sync the auto reminder: roll it to the new
+  // latest inspection, or delete it (incl. its notifications) if none remain.
+  if (entry?.category === "INSPECTION") {
+    await syncInspectionReminder(vehicleId);
+  }
   revalidatePath(`/vehicles/${vehicleId}/repairs`);
   revalidatePath(`/vehicles/${vehicleId}`);
 }

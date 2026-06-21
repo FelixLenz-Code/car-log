@@ -81,7 +81,13 @@ export async function syncInspectionReminder(vehicleId: string): Promise<void> {
     _max: { date: true },
   });
   const lastDate = latest._max.date;
-  if (!lastDate) return;
+  if (!lastDate) {
+    // No INSPECTION entries left (e.g. the repair that triggered this reminder
+    // was deleted) → remove the auto-created HU/AU reminder so its notifications
+    // stop too. A manually managed reminder (source != AUTO) is left untouched.
+    await db.reminder.deleteMany({ where: { vehicleId, type: "INSPECTION", source: "AUTO" } });
+    return;
+  }
 
   const due = nextOccurrence(addMonths(lastDate, 24), 24, new Date());
   const existing = await db.reminder.findFirst({
