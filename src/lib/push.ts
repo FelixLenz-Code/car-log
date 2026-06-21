@@ -43,7 +43,7 @@ async function getVapidKeys(): Promise<{ publicKey: string; privateKey: string }
 // VAPID "subject" must be a mailto: or https: URL identifying the sender.
 function vapidSubject(): string {
   const email = process.env.ADMIN_EMAIL?.trim();
-  return email ? `mailto:${email}` : "mailto:admin@car-log.app";
+  return email ? `mailto:${email}` : "mailto:admin@kilomondo.app";
 }
 
 /** The public key the browser needs to create a push subscription. */

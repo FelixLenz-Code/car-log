@@ -6,14 +6,14 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const sora = Sora({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "Car Log — Fahrzeug-Statistiken",
+  title: "Kilomondo — Fahrzeug-Statistiken",
   description:
     "Edle PWA für Kilometerstand, Verbrauch, Reparaturen und Pflege deiner Fahrzeuge.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Car Log",
+    title: "Kilomondo",
   },
 };
 

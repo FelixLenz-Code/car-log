@@ -11,7 +11,7 @@ export default function LoginPage() {
             <Car className="size-7" />
           </div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
-            Car Log
+            Kilomondo
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Melde dich an, um deine Fahrzeuge zu verwalten.

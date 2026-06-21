@@ -1,4 +1,4 @@
-# Car Log — Fahrzeug-Statistiken (PWA)
+# Kilomondo — Fahrzeug-Statistiken (PWA)
 
 Eine edle, installierbare PWA, um Statistiken und Pflege-Tagebücher für mehrere
 Fahrzeuge zu führen: **Kilometerstand**, **Verbrauch / Tankbuch**, **Reparaturbuch**
@@ -23,11 +23,11 @@ aktuelle Version von GitHub, erzeugt `.env` mit zufälligem DB-Passwort und
 Session-Secret, fragt (falls Terminal) nach Admin-Zugang und startet alles:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/car-log/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/kilomondo/main/install.sh | bash
 ```
 
-Installiert nach `./car-log` (über `CARLOG_DIR` änderbar). Danach läuft die App auf
-`http://<server>:3000` (Port via `CARLOG_PORT`). Der generierte Admin und das
+Installiert nach `./kilomondo` (über `KILOMONDO_DIR` änderbar). Danach läuft die App auf
+`http://<server>:3000` (Port via `KILOMONDO_PORT`). Der generierte Admin und das
 Passwort werden am Ende ausgegeben — notieren!
 
 Führst du **denselben Befehl erneut** aus und es existiert bereits eine Installation,
@@ -39,13 +39,13 @@ brauchst `update` also nicht zwingend.
 Holt die neueste Version, **behält Daten und `.env`** (DB liegt im Docker-Volume):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/car-log/main/install.sh | bash -s -- update
+curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/kilomondo/main/install.sh | bash -s -- update
 # ...oder aus dem Installationsverzeichnis:
-./car-log/install.sh update          # erzwingen: update --force
+./kilomondo/install.sh update          # erzwingen: update --force
 ```
 
 Weitere Befehle: `install.sh status` · `logs` · `uninstall [--purge]`.
-Optionen per Umgebungsvariable: `CARLOG_DIR`, `CARLOG_REF` (Tag/Branch), `CARLOG_PORT`,
+Optionen per Umgebungsvariable: `KILOMONDO_DIR`, `KILOMONDO_REF` (Tag/Branch), `KILOMONDO_PORT`,
 `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `COOKIE_SECURE`.
 
 <details>

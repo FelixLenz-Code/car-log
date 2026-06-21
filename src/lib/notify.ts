@@ -22,7 +22,7 @@ export async function notifyOwnerOfActivity(opts: {
       select: { name: true },
     });
     await sendPushToUser(opts.ownerId, {
-      title: vehicle?.name ?? "Car Log",
+      title: vehicle?.name ?? "Kilomondo",
       body: `${opts.actorName} ${opts.summary}.`,
       url: opts.path,
       tag: `activity-${opts.vehicleId}`,

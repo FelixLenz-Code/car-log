@@ -22,7 +22,7 @@ export function AppNav({
             <Car className="size-5" />
           </span>
           <span className="hidden font-display text-lg font-semibold tracking-tight sm:inline">
-            Car Log
+            Kilomondo
           </span>
         </Link>
 

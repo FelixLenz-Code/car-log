@@ -1,6 +1,6 @@
 {
-  "name": "Car Log — Fahrzeug-Statistiken",
-  "short_name": "Car Log",
+  "name": "Kilomondo — Fahrzeug-Statistiken",
+  "short_name": "Kilomondo",
   "description": "Kilometerstand, Verbrauch, Reparaturen und Pflege deiner Fahrzeuge.",
   "start_url": "/",
   "scope": "/",

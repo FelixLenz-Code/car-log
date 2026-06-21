@@ -216,7 +216,7 @@ export async function generateVehiclePdf(
         `<span>${esc(vehicle.name)}</span>` +
         '<span>Seite <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>',
     });
-    return { filename: `carlog-${slugify(vehicle.name)}.pdf`, buffer: Buffer.from(pdf) };
+    return { filename: `kilomondo-${slugify(vehicle.name)}.pdf`, buffer: Buffer.from(pdf) };
   } finally {
     await browser.close().catch(() => {});
   }

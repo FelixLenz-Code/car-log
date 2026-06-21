@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
 #
-# Car-Log server installer & updater.
+# Kilomondo server installer & updater.
 #
 #   Install (one command):
-#     curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/car-log/main/install.sh | bash
+#     curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/kilomondo/main/install.sh | bash
 #
 #   Update an existing install:
-#     curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/car-log/main/install.sh | bash -s -- update
+#     curl -fsSL https://raw.githubusercontent.com/FelixLenz-Code/kilomondo/main/install.sh | bash -s -- update
 #     # ...or, from inside the install directory:
 #     ./install.sh update
 #
 # Other commands: status | logs | uninstall
 #
 # Environment overrides:
-#   CARLOG_DIR    install directory            (default: ./car-log)
-#   CARLOG_REF    git ref to install (tag/branch/sha; default: latest release, else main)
-#   CARLOG_PORT   host port                     (default: 3000)
+#   KILOMONDO_DIR    install directory            (default: ./kilomondo)
+#   KILOMONDO_REF    git ref to install (tag/branch/sha; default: latest release, else main)
+#   KILOMONDO_PORT   host port                     (default: 3000)
 #   ADMIN_EMAIL   first admin login            (else prompted / admin@example.com)
 #   ADMIN_PASSWORD first admin password        (else prompted / generated)
 #   ADMIN_NAME    admin display name           (default: Administrator)
 #   COOKIE_SECURE "true" behind HTTPS          (default: false)
-#   CARLOG_FRESH  "1" = on update, wipe data & settings and set up a fresh server
-#   CARLOG_BUILD  "1" = build the image locally instead of pulling the release image
+#   KILOMONDO_FRESH  "1" = on update, wipe data & settings and set up a fresh server
+#   KILOMONDO_BUILD  "1" = build the image locally instead of pulling the release image
 #
 set -euo pipefail
 
-REPO="FelixLenz-Code/car-log"
+REPO="FelixLenz-Code/kilomondo"
 
 # ---------- pretty output ----------
 if [ -t 1 ]; then
@@ -61,11 +61,11 @@ compose() { ( cd "$DIR" && $COMPOSE "$@" ); }
 # Bring the stack up; on failure, print the common LXC/sysctl hint before bailing.
 # Prefers the prebuilt image published with each release (fast); falls back to a
 # local build when no matching image can be pulled (non-release ref, an
-# architecture without a published image, or offline) or when CARLOG_BUILD=1.
+# architecture without a published image, or offline) or when KILOMONDO_BUILD=1.
 compose_up() {
   local build=0
-  if [ "${CARLOG_BUILD:-0}" = 1 ]; then
-    info "CARLOG_BUILD=1 — building the image from source."
+  if [ "${KILOMONDO_BUILD:-0}" = 1 ]; then
+    info "KILOMONDO_BUILD=1 — building the image from source."
     build=1
   elif compose pull; then
     ok "Fetched the prebuilt image — no local build needed."
@@ -100,7 +100,7 @@ gen_password() {
 
 # Resolve the ref to install: explicit override, else latest GitHub release, else main.
 resolve_ref() {
-  if [ -n "${CARLOG_REF:-}" ]; then printf '%s' "$CARLOG_REF"; return; fi
+  if [ -n "${KILOMONDO_REF:-}" ]; then printf '%s' "$KILOMONDO_REF"; return; fi
   local tag
   tag=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
         | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' || true)
@@ -123,7 +123,7 @@ write_env() {
   session_secret=$(gen_secret)
   admin_name="${ADMIN_NAME:-Administrator}"
   cookie_secure="${COOKIE_SECURE:-false}"
-  app_port="${CARLOG_PORT:-3000}"
+  app_port="${KILOMONDO_PORT:-3000}"
 
   # A controlling terminal may be absent (e.g. under `curl | bash` in some
   # shells, or CI): /dev/tty can exist yet fail to open. Probe it once.
@@ -205,10 +205,10 @@ access_url() {
 cmd_install() {
   require_tools; detect_compose
 
-  # If Car-Log is already installed here, a plain install upgrades it instead of
+  # If Kilomondo is already installed here, a plain install upgrades it instead of
   # bailing out — so the same one-liner both installs and updates. The update
   # path then asks whether to keep your data & settings or start fresh. Use a
-  # different CARLOG_DIR for a second, independent instance.
+  # different KILOMONDO_DIR for a second, independent instance.
   if [ -f "$DIR/docker-compose.yml" ] && [ -f "$DIR/.env" ]; then
     info "Existing install detected in ${B}$DIR${N} — running update instead."
     cmd_update "$@"
@@ -220,7 +220,7 @@ cmd_install() {
   download_into "$ref" "$DIR"
   printf '%s\n' "$ref" > "$DIR/.carlog-version"
   # Tell compose which published image to pull (matches the installed version).
-  export CARLOG_IMAGE_TAG="$ref"
+  export KILOMONDO_IMAGE_TAG="$ref"
 
   info "Configuring ${B}$DIR/.env${N} ..."
   write_env
@@ -229,7 +229,7 @@ cmd_install() {
   compose_up
 
   echo
-  ok "${B}Car-Log ${ref}${N} is up."
+  ok "${B}Kilomondo ${ref}${N} is up."
   printf '   %sURL:%s      %s\n' "$B" "$N" "$(access_url)"
   printf '   %sAdmin:%s    %s\n' "$B" "$N" "$ADMIN_EMAIL_FINAL"
   if [ "${GENERATED_ADMIN_PW_SHOWN:-0}" = "1" ]; then
@@ -286,7 +286,7 @@ cmd_update_fresh() {
   download_into "$new" "$DIR"
   rm -f "$DIR/.env"            # drop old settings so write_env reconfigures cleanly
   printf '%s\n' "$new" > "$DIR/.carlog-version"
-  export CARLOG_IMAGE_TAG="$new"
+  export KILOMONDO_IMAGE_TAG="$new"
 
   info "Configuring ${B}$DIR/.env${N} ..."
   write_env
@@ -295,7 +295,7 @@ cmd_update_fresh() {
   compose_up
 
   echo
-  ok "${B}Car-Log ${new}${N} is up — fresh server."
+  ok "${B}Kilomondo ${new}${N} is up — fresh server."
   printf '   %sURL:%s      %s\n' "$B" "$N" "$(access_url)"
   printf '   %sAdmin:%s    %s\n' "$B" "$N" "$ADMIN_EMAIL_FINAL"
   if [ "${GENERATED_ADMIN_PW_SHOWN:-0}" = "1" ]; then
@@ -305,7 +305,7 @@ cmd_update_fresh() {
 
 cmd_update() {
   require_tools; detect_compose
-  [ -f "$DIR/docker-compose.yml" ] || die "No install found in ${B}$DIR${N}. Set CARLOG_DIR or run install first."
+  [ -f "$DIR/docker-compose.yml" ] || die "No install found in ${B}$DIR${N}. Set KILOMONDO_DIR or run install first."
 
   # Parse options. --force rebuilds even when up to date; --fresh/--reset wipes
   # data AND settings; --keep forces the keep path; --yes/-y pre-confirms --fresh.
@@ -320,7 +320,7 @@ cmd_update() {
       *)               warn "Ignoring unknown update option: ${B}$a${N}";;
     esac
   done
-  [ "${CARLOG_FRESH:-0}" = 1 ] && FRESH=1
+  [ "${KILOMONDO_FRESH:-0}" = 1 ] && FRESH=1
 
   local UPDATE_MODE; choose_update_mode
   if [ "$UPDATE_MODE" = fresh ]; then cmd_update_fresh; return; fi
@@ -344,7 +344,7 @@ cmd_update() {
   download_into "$new" "$DIR"
   cp "$tmp/.env" "$DIR/.env"; rm -rf "$tmp"
   printf '%s\n' "$new" > "$DIR/.carlog-version"
-  export CARLOG_IMAGE_TAG="$new"
+  export KILOMONDO_IMAGE_TAG="$new"
   merge_new_env_keys
 
   info "Starting (migrations run automatically) ..."
@@ -357,14 +357,14 @@ cmd_status()    { detect_compose; [ -f "$DIR/docker-compose.yml" ] || die "No in
 cmd_logs()      { detect_compose; [ -f "$DIR/docker-compose.yml" ] || die "No install in $DIR."; compose logs -f --tail=100; }
 cmd_uninstall() {
   detect_compose; [ -f "$DIR/docker-compose.yml" ] || die "No install in $DIR."
-  warn "This stops Car-Log. Add ${B}--purge${N} to also DELETE the database volume (irreversible)."
+  warn "This stops Kilomondo. Add ${B}--purge${N} to also DELETE the database volume (irreversible)."
   if [ "${1:-}" = "--purge" ]; then compose down -v; warn "Database volume removed."; else compose down; fi
   ok "Stopped. Files remain in ${B}$DIR${N} (delete manually if desired)."
 }
 
 usage() {
   cat <<EOF
-${B}Car-Log installer${N}
+${B}Kilomondo installer${N}
 
   install              Download the current version and start it (default)
   update [options]     Update an existing install. Without flags it asks whether
@@ -377,7 +377,7 @@ ${B}Car-Log installer${N}
   logs                 Tail application logs
   uninstall [--purge]  Stop (and with --purge, delete the database volume)
 
-Env: CARLOG_DIR, CARLOG_REF, CARLOG_PORT, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME, COOKIE_SECURE, CARLOG_FRESH, CARLOG_BUILD
+Env: KILOMONDO_DIR, KILOMONDO_REF, KILOMONDO_PORT, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME, COOKIE_SECURE, KILOMONDO_FRESH, KILOMONDO_BUILD
 EOF
 }
 
@@ -386,12 +386,12 @@ CMD="${1:-install}"; [ $# -gt 0 ] && shift || true
 
 # Resolve install directory. For update/status/logs/uninstall, auto-detect the
 # current directory if it already looks like an install.
-if [ -n "${CARLOG_DIR:-}" ]; then
-  DIR="$CARLOG_DIR"
+if [ -n "${KILOMONDO_DIR:-}" ]; then
+  DIR="$KILOMONDO_DIR"
 elif [ "$CMD" != "install" ] && [ -f "./docker-compose.yml" ] && { [ -f "./.carlog-version" ] || [ -f "./.env" ]; }; then
   DIR="."
 else
-  DIR="./car-log"
+  DIR="./kilomondo"
 fi
 
 case "$CMD" in

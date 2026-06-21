@@ -54,7 +54,7 @@ export async function deletePushSubscriptionAction(
 export async function sendTestNotificationAction(): Promise<PushActionState> {
   const user = await requireUser();
   const delivered = await sendPushToUser(user.id, {
-    title: "Car Log — Test",
+    title: "Kilomondo — Test",
     body: "Push-Benachrichtigungen funktionieren! 🚗",
     url: "/account",
     tag: "carlog-test",

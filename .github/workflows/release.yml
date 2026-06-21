@@ -31,7 +31,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/felixlenz-code/car-log
+          images: ghcr.io/felixlenz-code/kilomondo
           # On tag v1.2.3 → publishes :1.2.3, :v1.2.3 and :latest
           tags: |
             type=semver,pattern={{version}}

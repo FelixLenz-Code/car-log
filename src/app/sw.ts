@@ -33,7 +33,7 @@ self.addEventListener("push", (event) => {
   } catch {
     if (event.data) data = { body: event.data.text() };
   }
-  const title = data.title ?? "Car Log";
+  const title = data.title ?? "Kilomondo";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body ?? "",

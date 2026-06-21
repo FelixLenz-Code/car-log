@@ -219,7 +219,7 @@ export async function exportVehicleZip(
 
   zip.file("manifest.json", JSON.stringify(manifest, null, 2));
   const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "STORE" });
-  return { filename: `carlog-${slugify(v.name)}.zip`, buffer };
+  return { filename: `kilomondo-${slugify(v.name)}.zip`, buffer };
 }
 
 // ---------------- import ----------------
@@ -332,7 +332,7 @@ export async function importVehicleZip(
     throw new Error("Datei ist kein gültiges ZIP-Archiv.");
   }
   const manifestEntry = zip.file("manifest.json");
-  if (!manifestEntry) throw new Error("Kein Car-Log-Export (manifest.json fehlt).");
+  if (!manifestEntry) throw new Error("Kein Kilomondo-Export (manifest.json fehlt).");
 
   let manifest: z.infer<typeof manifestSchema>;
   try {
