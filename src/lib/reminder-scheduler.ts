@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
-import { backfillLogRemindersOnce, INSPECTION_EARLY_LEAD_DAYS } from "@/lib/reminder-suggestions";
+import { backfillLogRemindersOnce, splitInspectionRemindersOnce } from "@/lib/reminder-suggestions";
 import { formatDate } from "@/lib/utils";
 
 const KM_LEAD = 500; // notify when within this many km of a mileage due
@@ -75,21 +75,12 @@ export async function runDueReminders(now = new Date()): Promise<number> {
         body = `${r.title}: seit ${Math.floor(since)} Tagen kein Eintrag.`;
       }
     } else if (r.dueDate) {
-      // HU/AU notifies twice: an early heads-up ~2 months out plus the regular
-      // lead time. Other reminders just use their single lead. We fire once per
-      // threshold as it's crossed (the latest passed-but-not-yet-notified one).
-      const leads =
-        r.type === "INSPECTION"
-          ? Array.from(new Set([INSPECTION_EARLY_LEAD_DAYS, r.leadDays])).sort((a, b) => b - a)
-          : [r.leadDays];
-      let chosen: Date | null = null;
-      for (const lead of leads) {
-        const t = new Date(r.dueDate.getTime() - lead * DAY);
-        if (now >= t && (!r.lastNotifiedAt || r.lastNotifiedAt < t)) {
-          if (!chosen || t > chosen) chosen = t;
-        }
-      }
-      if (chosen) {
+      // Notify once when the reminder's lead window opens; the guard keeps it
+      // from re-firing until a date change / recurrence rollover re-arms it.
+      // (HU/AU's early + regular notice are two separate reminders, each with
+      // its own leadDays, so there's no special-casing here.)
+      const t = new Date(r.dueDate.getTime() - r.leadDays * DAY);
+      if (now >= t && (!r.lastNotifiedAt || r.lastNotifiedAt < t)) {
         const d = Math.ceil(daysUntil(r.dueDate, now));
         body =
           d >= 0
@@ -137,9 +128,11 @@ export async function runDueReminders(now = new Date()): Promise<number> {
 export function startReminderScheduler(): void {
   const g = globalThis as unknown as { __carlogReminderTimer?: NodeJS.Timeout };
   if (g.__carlogReminderTimer) return;
-  // Shortly after startup: backfill default LOG reminders (once), then check.
+  // Shortly after startup: backfill default LOG reminders + split legacy HU/AU
+  // reminders into two (both once), then check.
   setTimeout(() => {
     void backfillLogRemindersOnce()
+      .then(() => splitInspectionRemindersOnce())
       .then(() => runDueReminders())
       .catch(() => {});
   }, 30_000);

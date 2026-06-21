@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
 
 /**
- * Early heads-up lead (days) for HU/AU: in addition to a reminder's regular
- * leadDays, INSPECTION reminders also notify roughly two months out. Shared so
- * the scheduler and the overview stay in sync.
+ * HU/AU gets two separate auto reminders: an early heads-up (~2 months out) and
+ * the regular one closer to the date. Each is its own reminder/Termin with its
+ * own leadDays, so the scheduler and overview treat them like any other.
  */
 export const INSPECTION_EARLY_LEAD_DAYS = 60;
+export const INSPECTION_REGULAR_LEAD_DAYS = 28;
 
 export type ReminderSuggestion = {
   type: "INSPECTION" | "SERVICE";
@@ -34,6 +35,7 @@ function nextOccurrence(due: Date, recurrenceMonths: number, now: Date): Date {
 }
 
 const LOG_BACKFILL_FLAG = "log_reminder_backfill_done";
+const INSPECTION_SPLIT_FLAG = "inspection_reminder_split_done";
 
 /**
  * Ensure a vehicle has the default "don't forget to log entries" reminder
@@ -70,10 +72,26 @@ export async function backfillLogRemindersOnce(): Promise<void> {
 }
 
 /**
- * Auto-create or refresh the HU/AU reminder from the vehicle's inspection
+ * One-time migration: split the legacy single HU/AU reminder into the two
+ * separate Termine (early heads-up + regular). Idempotent via
+ * syncInspectionReminder and guarded by an AppSetting flag so it runs once.
+ */
+export async function splitInspectionRemindersOnce(): Promise<void> {
+  const done = await db.appSetting.findUnique({ where: { key: INSPECTION_SPLIT_FLAG } });
+  if (done) return;
+  const vehicles = await db.vehicle.findMany({ select: { id: true } });
+  for (const v of vehicles) await syncInspectionReminder(v.id);
+  await db.appSetting
+    .create({ data: { key: INSPECTION_SPLIT_FLAG, value: new Date().toISOString() } })
+    .catch(() => {});
+}
+
+/**
+ * Auto-create or refresh the HU/AU reminders from the vehicle's inspection
  * history (latest INSPECTION entry + 24 months, rolled to the next upcoming
- * date). Called when an HU/AU repair entry is added or edited. Leaves a
- * user-created (MANUAL) reminder untouched so it doesn't override manual edits.
+ * date). Maintains two separate Termine — an early heads-up (60 days) and the
+ * regular one (28 days). Called when an HU/AU repair entry is added or edited.
+ * Leaves user-created (non-AUTO) reminders untouched.
  */
 export async function syncInspectionReminder(vehicleId: string): Promise<void> {
   const latest = await db.repairEntry.aggregate({
@@ -82,37 +100,59 @@ export async function syncInspectionReminder(vehicleId: string): Promise<void> {
   });
   const lastDate = latest._max.date;
   if (!lastDate) {
-    // No INSPECTION entries left (e.g. the repair that triggered this reminder
-    // was deleted) → remove the auto-created HU/AU reminder so its notifications
-    // stop too. A manually managed reminder (source != AUTO) is left untouched.
+    // No INSPECTION entries left (e.g. the repair that triggered these reminders
+    // was deleted) → remove the auto-created HU/AU reminders so their
+    // notifications stop too. Manually managed reminders are left untouched.
     await db.reminder.deleteMany({ where: { vehicleId, type: "INSPECTION", source: "AUTO" } });
     return;
   }
 
-  const due = nextOccurrence(addMonths(lastDate, 24), 24, new Date());
-  const existing = await db.reminder.findFirst({
-    where: { vehicleId, type: "INSPECTION" },
-    orderBy: { createdAt: "desc" },
-  });
+  const existing = await db.reminder.findMany({ where: { vehicleId, type: "INSPECTION" } });
+  // If the user took over management (any non-AUTO HU/AU reminder), don't touch.
+  if (existing.some((r) => r.source !== "AUTO")) return;
 
-  if (existing) {
-    if (existing.source !== "AUTO") return; // respect a manually managed reminder
-    await db.reminder.update({
-      where: { id: existing.id },
-      data: { dueDate: due, recurrenceMonths: 24, active: true, lastNotifiedAt: null },
-    });
-  } else {
-    await db.reminder.create({
-      data: {
-        vehicleId,
-        type: "INSPECTION",
-        title: "HU/AU (TÜV)",
-        dueDate: due,
-        leadDays: 28,
-        recurrenceMonths: 24,
-        source: "AUTO",
-      },
-    });
+  const due = nextOccurrence(addMonths(lastDate, 24), 24, new Date());
+  const wanted = [
+    { leadDays: INSPECTION_EARLY_LEAD_DAYS, title: "HU/AU (TÜV) – Vorwarnung" },
+    { leadDays: INSPECTION_REGULAR_LEAD_DAYS, title: "HU/AU (TÜV)" },
+  ];
+
+  for (const w of wanted) {
+    const ex = existing.find((r) => r.source === "AUTO" && r.leadDays === w.leadDays);
+    if (ex) {
+      const dueChanged = ex.dueDate?.getTime() !== due.getTime();
+      await db.reminder.update({
+        where: { id: ex.id },
+        data: {
+          dueDate: due,
+          title: w.title,
+          recurrenceMonths: 24,
+          active: true,
+          // Only reset the notification guard when the date actually moves.
+          ...(dueChanged ? { lastNotifiedAt: null } : {}),
+        },
+      });
+    } else {
+      await db.reminder.create({
+        data: {
+          vehicleId,
+          type: "INSPECTION",
+          title: w.title,
+          dueDate: due,
+          leadDays: w.leadDays,
+          recurrenceMonths: 24,
+          source: "AUTO",
+        },
+      });
+    }
+  }
+
+  // Drop any stray AUTO HU/AU reminders that don't match the two wanted leads
+  // (e.g. a legacy single reminder with a different leadDays).
+  const keep = new Set(wanted.map((w) => w.leadDays));
+  const stray = existing.filter((r) => r.source === "AUTO" && !keep.has(r.leadDays));
+  if (stray.length) {
+    await db.reminder.deleteMany({ where: { id: { in: stray.map((r) => r.id) } } });
   }
 }
 
