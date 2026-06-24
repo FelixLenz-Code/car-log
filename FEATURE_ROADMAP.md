@@ -3,10 +3,11 @@
 Fortschritt der am 2026-06-23 beauftragten Features. Reihenfolge nach Nutzerpriorität.
 Status: ⬜ offen · 🟨 in Arbeit · ✅ fertig
 
-> Migrationen werden **nicht lokal angewandt** (Port 5432 ist von einem anderen
-> Projekt belegt, carlog-DB läuft nicht). Migrationsdateien werden angelegt und
-> greifen beim Deploy via `prisma migrate deploy`. Korrektheit wird über
-> `npx prisma generate` + `npx tsc --noEmit` geprüft.
+> Erledigt (2026-06-24): carlog-DB lief, die 7 Migrationen wurden via
+> `prisma migrate deploy` angewandt, Features durchgeklickt und in v0.18.0
+> released. Lokaler Dev braucht Port 5432 frei (kollidierte zeitweise mit
+> `finance_tracker-db-1`) und einen `docker-compose.override.yml`, der den
+> db-Port veröffentlicht (gitignored).
 
 | # | Feature | Optional? | Status |
 |---|---------|-----------|--------|
@@ -21,16 +22,23 @@ Status: ⬜ offen · 🟨 in Arbeit · ✅ fertig
 | 7 | Beleg-Scan / OCR | — (bereits vorhanden) | ✅ |
 | 8 | EV-Lade-Tracking | ja (`evTracking`) | ✅ |
 
-**Stand 2026-06-24:** Alle Features (1, 1b, 2, 3, 3b, 4, 5, 6, 7, 8) umgesetzt;
-`npx tsc --noEmit` und `npx next build` fehlerfrei. Der PDF-Report enthält jetzt
-auch Ausgaben, Reifen, Fahrtenbuch, Laden, Dokumente und Leasing.
+**Released in v0.18.0 (2026-06-24):** Alle Features (1, 1b, 2, 3, 3b, 4, 5, 6, 7, 8)
+umgesetzt, committet, getaggt und veröffentlicht. `npx tsc --noEmit` und
+`npx next build` fehlerfrei; die 7 Migrationen wurden lokal via
+`prisma migrate deploy` angewandt. Der PDF-Report enthält Ausgaben, Reifen,
+Fahrtenbuch, Laden, Dokumente und Leasing und richtet die Kennzahlen am Antrieb
+aus. GitHub-Release + GHCR-Image stehen.
+
+Nach dem ursprünglichen Auftrag noch ergänzt:
+- **Antriebsabhängige Tabs:** reiner EV blendet das Tankbuch aus, Hybrid zeigt
+  Tanken + Laden (Logik aus `vehicle.fuelType` + `evTracking`).
+- **Neue Desktop-Nav-Bar:** überzählige Tabs klappen in ein „Mehr"-Dropdown
+  (gemessen per ResizeObserver) statt seitwärts zu scrollen.
+- **Vollständiges ZIP-Backup (Version 4):** jetzt auch Datei-Anhänge
+  (`Attachment`: Dokument-Scans + Reparatur-Rechnungen) im Export/Import;
+  Round-Trip verifiziert (sha256-Byte-Gleichheit).
 
 ### Offen / Folgeschritte
-- **Migrationen anwenden:** beim Hochfahren des Stacks prüfen, dass
-  `prisma migrate deploy` die **7** neuen Migrationen (`20260623115000`–
-  `20260624100000`) einspielt.
-- Funktionaler End-to-End-Test gegen eine laufende DB steht noch aus (lokal lief
-  die carlog-DB nicht; verifiziert via generate/tsc/build).
 - Nicht beauftragt, aber denkbar: CSV-Import auch für Reparaturen/Pflege;
   wiederkehrende Fixkosten automatisch fortschreiben.
 
