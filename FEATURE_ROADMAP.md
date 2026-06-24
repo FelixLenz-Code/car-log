@@ -38,6 +38,20 @@ Nach dem ursprünglichen Auftrag noch ergänzt:
   (`Attachment`: Dokument-Scans + Reparatur-Rechnungen) im Export/Import;
   Round-Trip verifiziert (sha256-Byte-Gleichheit).
 
+**Released in v0.19.0 (2026-06-24): Profiltiefe-Verlauf bei Reifen.**
+- Neues Modell `TireMeasurement` (Datum, `treadDepthMm`, optional `odometer`,
+  Notiz; Relation zu Vehicle + TireSet, beide `onDelete: Cascade`).
+  Migration `20260624110000_add_tire_measurements`.
+- `lib/tires.ts` `tireWearSeries` baut Chart-Daten (eine Linie je Radsatz auf
+  gemeinsamer Zeitachse). Chart `components/charts/tire-wear-chart.tsx`
+  (recharts, 1,6-mm-`ReferenceLine`).
+- Validation `tireMeasurementSchema`; Actions `create/deleteTireMeasurementAction`
+  mit `syncSetTreadDepth` (hält `TireSet.treadDepthMm` = neueste Messung).
+- Form `TireMeasurementForm` + zwei neue Karten auf der Reifen-Seite
+  („Profiltiefe messen", „Profil-Verlauf" mit Chart + Mess-Liste).
+- Export: ZIP (Round-Trip verifiziert) + CSV `reifenprofil.csv`. PDF unverändert
+  (zeigt weiterhin die – jetzt synchronisierte – aktuelle Profiltiefe).
+
 ### Offen / Folgeschritte
 - Nicht beauftragt, aber denkbar: CSV-Import auch für Reparaturen/Pflege;
   wiederkehrende Fixkosten automatisch fortschreiben.
@@ -99,6 +113,8 @@ Status: ✅  · Toggle: `tireTracking`
 - Toggles als Checkboxen in `vehicle-form.tsx` (Block „Zusatzfunktionen").
 - Export/Import (`vehicle-transfer.ts`) auf Version 3 erweitert: Toggles +
   TireSets + TireChanges werden mitgesichert/wiederhergestellt.
+- **v0.19.0:** zusätzlich `TireMeasurement` (Profiltiefe-Verlauf, eigenes
+  Diagramm) — Details im v0.19.0-Block oben.
 
 **Hinweis für Folge-Features (3–8):** Bei jedem neuen Model auch
 `vehicle-transfer.ts` (Export+Import) und ggf. `vehicle-pdf.ts` mitziehen.
