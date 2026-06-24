@@ -65,6 +65,15 @@ Nach dem ursprünglichen Auftrag noch ergänzt:
   zum Reifen-Tab. `reminders/page.tsx` lädt dazu die per `reminderId` verknüpften
   Radsätze + Messungen.
 
+**Released in v0.22.0 (2026-06-24): Bugfix – Verschleiß-Erinnerung wurde nie erzeugt.**
+- `createTireSetAction`/`updateTireSetAction` (`src/actions/tires.ts`) lasen das
+  Formularfeld `wearAlertMm` gar nicht aus dem `FormData` → `parsed.data.wearAlertMm`
+  war immer `undefined`. Folge: Die Schwelle wurde nie gespeichert und
+  `applyTireReminder` legte nie eine Erinnerung an (die v0.20.0-Warnung war
+  faktisch funktionslos). Feld jetzt in beiden Actions eingelesen.
+- Bestandsradsätze (vor dem Fix angelegt) bekommen die Erinnerung erst beim
+  nächsten Speichern.
+
 ### Offen / Folgeschritte
 - Nicht beauftragt, aber denkbar: CSV-Import auch für Reparaturen/Pflege;
   wiederkehrende Fixkosten automatisch fortschreiben.

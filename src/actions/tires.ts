@@ -75,6 +75,7 @@ export async function createTireSetAction(
     storageLocation: formData.get("storageLocation"),
     retired: formData.get("retired") === "on" || formData.get("retired") === "true",
     notes: formData.get("notes"),
+    wearAlertMm: formData.get("wearAlertMm"),
   });
   if (!parsed.success) return fail(parsed);
 
@@ -110,6 +111,7 @@ export async function updateTireSetAction(
     storageLocation: formData.get("storageLocation"),
     retired: formData.get("retired") === "on" || formData.get("retired") === "true",
     notes: formData.get("notes"),
+    wearAlertMm: formData.get("wearAlertMm"),
   });
   if (!parsed.success) return fail(parsed);
 
