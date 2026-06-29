@@ -1,33 +1,62 @@
 import Link from "next/link";
-import { Car, Plus, Gauge, Users } from "lucide-react";
+import { Car, Plus } from "lucide-react";
 import { requireUser, vehicleAccessWhere } from "@/lib/auth/guards";
 import { db } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { VehicleMedia } from "@/components/vehicle-media";
 import { ImportVehicleButton } from "@/components/import-vehicle-button";
+import { GarageGrid, type GarageVehicle } from "@/components/garage-grid";
 import { hasVehicleMedia } from "@/lib/vehicle-media";
-import { formatKm } from "@/lib/utils";
-
-const fuelTypeLabel: Record<string, string> = {
-  PETROL: "Benzin",
-  DIESEL: "Diesel",
-  ELECTRIC: "Elektro",
-  HYBRID: "Hybrid",
-  LPG: "LPG",
-};
 
 export default async function GaragePage() {
   const user = await requireUser();
-  const vehicles = await db.vehicle.findMany({
-    where: vehicleAccessWhere(user.id),
-    orderBy: { createdAt: "asc" },
-    include: {
-      fuelEntries: { select: { odometer: true } },
-      odometerEntries: { select: { odometer: true } },
-    },
+  const [vehicles, orders] = await Promise.all([
+    db.vehicle.findMany({
+      where: vehicleAccessWhere(user.id),
+      orderBy: { createdAt: "asc" },
+      include: {
+        fuelEntries: { select: { odometer: true } },
+        odometerEntries: { select: { odometer: true } },
+      },
+    }),
+    db.vehicleOrder.findMany({
+      where: { userId: user.id },
+      select: { vehicleId: true, sortOrder: true },
+    }),
+  ]);
+
+  // Apply this user's personal ordering. Vehicles without a saved position keep
+  // their createdAt order and sort after the ones that do.
+  const orderByVehicle = new Map(orders.map((o) => [o.vehicleId, o.sortOrder]));
+  vehicles.sort((a, b) => {
+    const oa = orderByVehicle.get(a.id);
+    const ob = orderByVehicle.get(b.id);
+    if (oa !== undefined && ob !== undefined) return oa - ob;
+    if (oa !== undefined) return -1;
+    if (ob !== undefined) return 1;
+    return a.createdAt.getTime() - b.createdAt.getTime();
   });
+
+  const cards: GarageVehicle[] = vehicles.map((v) => ({
+    id: v.id,
+    name: v.name,
+    make: v.make,
+    model: v.model,
+    year: v.year,
+    fuelType: v.fuelType,
+    shared: v.userId !== user.id,
+    currentOdometer: Math.max(
+      v.initialOdometer,
+      ...v.fuelEntries.map((f) => f.odometer),
+      ...v.odometerEntries.map((o) => o.odometer),
+      0
+    ),
+    hasMedia: hasVehicleMedia(v),
+    animationStatus: v.animationStatus,
+    animationVideoId: v.animationVideoId,
+    animationPosterId: v.animationPosterId,
+    coverImageId: v.coverImageId,
+  }));
 
   return (
     <div className="space-y-8">
@@ -70,60 +99,7 @@ export default async function GaragePage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {vehicles.map((v) => {
-            const current = Math.max(
-              v.initialOdometer,
-              ...v.fuelEntries.map((f) => f.odometer),
-              ...v.odometerEntries.map((o) => o.odometer),
-              0
-            );
-            return (
-              <Link key={v.id} href={`/vehicles/${v.id}`} className="group">
-                <Card className="h-full overflow-hidden bg-[#121418] transition-colors group-hover:border-primary/40">
-                  {hasVehicleMedia(v) && (
-                    <VehicleMedia
-                      status={v.animationStatus}
-                      videoId={v.animationVideoId}
-                      posterId={v.animationPosterId}
-                      coverImageId={v.coverImageId}
-                      alt={v.name}
-                      className="h-48 w-full object-cover"
-                    />
-                  )}
-                  <CardContent className="space-y-4 p-6">
-                    <div className="flex items-start justify-between">
-                      {!hasVehicleMedia(v) && (
-                        <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-primary">
-                          <Car className="size-5" />
-                        </span>
-                      )}
-                      <div className="ml-auto flex items-center gap-2">
-                        {v.userId !== user.id && (
-                          <Badge variant="secondary" className="gap-1">
-                            <Users className="size-3" /> Geteilt
-                          </Badge>
-                        )}
-                        <Badge variant="secondary">{fuelTypeLabel[v.fuelType]}</Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="font-display text-lg font-semibold">{v.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {[v.make, v.model, v.year].filter(Boolean).join(" ") ||
-                          "Keine Details"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Gauge className="size-4" />
-                      {formatKm(current)}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+        <GarageGrid vehicles={cards} />
       )}
     </div>
   );

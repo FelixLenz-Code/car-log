@@ -82,6 +82,21 @@ Nach dem ursprünglichen Auftrag noch ergänzt:
   des Satzes wieder auftaucht — Löschen = Verschleiß-Warnung aus. No-op für alle
   übrigen Erinnerungen.
 
+**Released in v0.24.0 (2026-06-29): Fahrzeuge in der Garage anordnen.**
+- Neue Tabelle `VehicleOrder` (`userId`, `vehicleId`, `sortOrder`,
+  PK `[userId, vehicleId]`, Cascade auf User + Vehicle) — die Reihenfolge ist
+  **pro Nutzer** privat, sodass das Umsortieren eines geteilten Fahrzeugs die
+  Ansicht des Besitzers nicht verändert. Migration `20260629120000_add_vehicle_order`.
+- Garage (`src/app/(app)/page.tsx`) lädt die persönliche Order parallel und
+  sortiert clientseitig: gespeicherte Positionen zuerst, ungeordnete fallen auf
+  `createdAt` zurück und landen dahinter.
+- `reorderVehiclesAction` (`src/actions/vehicles.ts`) macht ein `upsert` pro
+  Fahrzeug, nur für vom Nutzer einsehbare Fahrzeuge (gefälschte IDs ignoriert).
+- Neues Client-Grid `src/components/garage-grid.tsx` mit „Anordnen"-Modus:
+  Drag-and-drop per Pointer-Events (Touch + Maus, `setPointerCapture`,
+  `touch-action: none`), Live-Reorder via `elementFromPoint`; gespeichert beim
+  Loslassen.
+
 ### Offen / Folgeschritte
 - Nicht beauftragt, aber denkbar: CSV-Import auch für Reparaturen/Pflege;
   wiederkehrende Fixkosten automatisch fortschreiben.

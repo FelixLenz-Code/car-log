@@ -152,6 +152,7 @@ model User {
   // Vehicles owned by others that have been shared with this user.
   sharedVehicles VehicleShare[]
   pushSubscriptions PushSubscription[]
+  vehicleOrders VehicleOrder[]
 }
 
 // A Web Push subscription for one browser/device of a user. Multiple per user.
@@ -232,7 +233,23 @@ model Vehicle {
   chargingSessions ChargingSession[]
   leasing        LeasingContract?
   expenses       Expense[]
+  orders         VehicleOrder[]
 
+  @@index([userId])
+}
+
+// Per-user manual ordering of vehicles in the garage grid. Each user keeps their
+// own order (so reordering a shared vehicle doesn't affect its owner's view).
+// Vehicles without a row fall back to createdAt and sort after ordered ones.
+model VehicleOrder {
+  userId    String
+  vehicleId String
+  sortOrder Int
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, vehicleId])
   @@index([userId])
 }
 

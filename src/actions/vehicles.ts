@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { db } from "@/lib/db";
-import { requireUser, getOwnedVehicle } from "@/lib/auth/guards";
+import { requireUser, getOwnedVehicle, vehicleAccessWhere } from "@/lib/auth/guards";
 import { vehicleSchema } from "@/lib/validation";
 import { saveDataUrlImage, resolveImageUpdate } from "@/lib/images";
 import { readGlbUpload, renderVehicleAnimationJob } from "@/lib/animation";
@@ -146,6 +146,33 @@ export async function importVehicleAction(
 
   revalidatePath("/");
   redirect(`/vehicles/${vehicleId}`);
+}
+
+/**
+ * Persist this user's personal ordering of the garage grid. Receives the
+ * vehicle ids in the desired order; each gets its index as sortOrder in a
+ * per-user VehicleOrder row. Ordering is private — it never affects how the
+ * vehicle's owner or other users see their garage. Forged ids are ignored.
+ */
+export async function reorderVehiclesAction(orderedIds: string[]): Promise<void> {
+  const user = await requireUser();
+  const accessible = await db.vehicle.findMany({
+    where: vehicleAccessWhere(user.id),
+    select: { id: true },
+  });
+  const allowed = new Set(accessible.map((v) => v.id));
+  const ids = orderedIds.filter((id) => allowed.has(id));
+
+  await db.$transaction(
+    ids.map((vehicleId, index) =>
+      db.vehicleOrder.upsert({
+        where: { userId_vehicleId: { userId: user.id, vehicleId } },
+        create: { userId: user.id, vehicleId, sortOrder: index },
+        update: { sortOrder: index },
+      })
+    )
+  );
+  revalidatePath("/");
 }
 
 export async function deleteVehicleAction(vehicleId: string): Promise<void> {
