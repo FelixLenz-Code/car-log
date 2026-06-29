@@ -94,8 +94,17 @@ Nach dem ursprünglichen Auftrag noch ergänzt:
   Fahrzeug, nur für vom Nutzer einsehbare Fahrzeuge (gefälschte IDs ignoriert).
 - Neues Client-Grid `src/components/garage-grid.tsx` mit „Anordnen"-Modus:
   Drag-and-drop per Pointer-Events (Touch + Maus, `setPointerCapture`,
-  `touch-action: none`), Live-Reorder via `elementFromPoint`; gespeichert beim
-  Loslassen.
+  `touch-action: none`); gespeichert beim Loslassen.
+
+**Released in v0.24.1 (2026-06-29): Anordnen robuster + echte Verschiebe-Animation.**
+- Sporadische Fehler beseitigt: der Server-Call lag im `setOrder`-Updater (lief
+  unter Strict Mode doppelt) — wird jetzt einmal beim Loslassen ausgelöst.
+- Flackerndes `elementFromPoint`-Swapping ersetzt durch Einfügeposition nach
+  nächstgelegener Zellmitte; gemessen über `offsetLeft/Top` (immun gegen laufende
+  Transforms), Pointer-Capture auf der stabilen Zelle statt am Karteninhalt.
+- Gezogene Karte als angehobenes Overlay (folgt Finger/Maus), übrige Karten
+  gleiten per FLIP-Animation in ihre neue Position; reiner Tap löst keinen
+  Server-Call aus.
 
 ### Offen / Folgeschritte
 - Nicht beauftragt, aber denkbar: CSV-Import auch für Reparaturen/Pflege;
